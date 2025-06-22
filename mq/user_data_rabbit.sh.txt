@@ -1,0 +1,13 @@
+#!/bin/bash
+
+yum update -y
+
+
+amazon-linux-extras install epel -y
+yum install rabbitmq-server -y
+systemctl enable rabbitmq-server
+systemctl start rabbitmq-server
+
+
+rabbitmqctl add_user appuser appuserpass
+rabbitmqctl set_permissions -p / appuser ".*" ".*" ".*"
