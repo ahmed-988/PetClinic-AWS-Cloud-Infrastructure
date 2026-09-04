@@ -1,0 +1,26 @@
+
+
+#!/bin/bash
+
+set -e
+
+echo "=== Updating packages ==="
+sudo apt update
+
+echo "=== Installing Memcached ==="
+sudo apt install -y memcached
+
+echo "=== Configuring Memcached ==="
+
+sudo sed -i 's/^-l .*/-l 0.0.0.0/' /etc/memcached.conf
+
+echo "=== Restarting Memcached ==="
+sudo systemctl enable memcached
+sudo systemctl restart memcached
+
+echo "=== Memcached status ==="
+sudo systemctl --no-pager status memcached
+
+echo ""
+echo "=== CACHE SETUP COMPLETED ==="
+

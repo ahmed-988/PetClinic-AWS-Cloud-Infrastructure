@@ -1,0 +1,45 @@
+
+#!/bin/bash
+
+set -e
+
+DB_NAME="petclinic"
+DB_USER="petclinic"
+DB_PASSWORD="StrongPass!123"
+
+echo "=== Updating packages ==="
+sudo apt update
+
+echo "=== Installing MySQL ==="
+sudo apt install -y mysql-server
+
+echo "=== Starting MySQL ==="
+sudo systemctl enable mysql
+sudo systemctl start mysql
+
+echo "=== Creating database and user ==="
+
+sudo mysql <<EOF
+CREATE DATABASE IF NOT EXISTS ${DB_NAME};
+
+CREATE USER IF NOT EXISTS '${DB_USER}'@'%' IDENTIFIED BY '${DB_PASSWORD}';
+
+GRANT ALL PRIVILEGES ON ${DB_NAME}.* TO '${DB_USER}'@'%';
+
+FLUSH PRIVILEGES;
+EOF
+
+echo "=== Configuring MySQL bind address ==="
+
+sudo sed -i 's/^bind-address.*/bind-address = 0.0.0.0/' \
+    /etc/mysql/mysql.conf.d/mysqld.cnf
+
+echo "=== Restarting MySQL ==="
+sudo systemctl restart mysql
+
+echo "=== Checking MySQL status ==="
+sudo systemctl --no-pager status mysql
+
+echo ""
+echo "=== DB SETUP COMPLETED ==="
+                

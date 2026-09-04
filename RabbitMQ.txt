@@ -1,0 +1,36 @@
+
+#!/bin/bash
+
+set -e
+
+MQ_USER="appuser"
+MQ_PASSWORD="StrongPass!123"
+
+echo "=== Updating packages ==="
+sudo apt update
+
+echo "=== Installing RabbitMQ ==="
+sudo apt install -y rabbitmq-server
+
+echo "=== Starting RabbitMQ ==="
+sudo systemctl enable rabbitmq-server
+sudo systemctl start rabbitmq-server
+
+echo "=== Creating RabbitMQ user ==="
+
+if sudo rabbitmqctl list_users | grep -q "^${MQ_USER}"; then
+    echo "User ${MQ_USER} already exists"
+else
+    sudo rabbitmqctl add_user "${MQ_USER}" "${MQ_PASSWORD}"
+fi
+
+echo "=== Setting permissions ==="
+
+sudo rabbitmqctl set_permissions -p / \
+    "${MQ_USER}" ".*" ".*" ".*"
+
+echo "=== RabbitMQ status ==="
+sudo systemctl --no-pager status rabbitmq-server
+
+echo ""
+echo "=== MQ SETUP COMPLETED ==="
