@@ -1,4 +1,4 @@
-☁️ PetClinic on AWS — Secure 3-Tier Cloud Architecture
+# ☁️ Spring PetClinic on AWS
 
 A production-style deployment of Spring PetClinic on AWS using a custom VPC, public and private subnets, NAT Gateway, Application Load Balancer, and isolated backend services.
 
@@ -8,322 +8,196 @@ The project demonstrates how to design and deploy a scalable 3-tier architecture
 <img width="942" height="602" alt="Untitled Diagram drawio (8)" src="https://github.com/user-attachments/assets/ad604920-dfda-431f-9003-924d9acc64c1" />
 
 
+## 🚀 Project Overview
 
-📌 Overview
+This project demonstrates how to deploy a Java web application on AWS with:
 
-This project deploys the Spring PetClinic application on an AWS VPC using the following architecture:
+* 🌐 Custom VPC
+* 🔀 Public & Private Subnets
+* ⚖️ Application Load Balancer
+* 🖥️ EC2 Instances
+* 🔒 Security Groups
+* 🚪 NAT Gateway
+* 🌍 Internet Gateway
+* 🗄️ MySQL
+* 🐇 RabbitMQ
+* ⚡ Memcached
 
+The application and backend services are kept inside **private subnets**, while the ALB is exposed to the internet.
 
-🏗️ AWS Infrastructure
-VPC
+---
 
-A custom VPC was created with:
+## ☁️ AWS Infrastructure
 
-VPC CIDR: 10.0.0.0/16
-Internet Gateway
-Public Route Table
-Private Route Table
-NAT Gateway
-Public Subnets
-Subnet	Availability Zone	CIDR
-public-subnet-1	AZ-A	10.0.6.0/24
-public-subnet-2	AZ-B	10.0.7.0/24
+### 🌐 VPC
 
-The public subnets host the:
+* CIDR
+* Internet Gateway
+* Public Route Table
+* Private Route Table
+* NAT Gateway
 
-Application Load Balancer
-NAT Gateway
-Private Application Subnets
-Subnet	Availability Zone	CIDR
-app-subnet-1	AZ-A	10.0.1.0/24
-app-subnet-2	AZ-B	10.0.5.0/24
+### 🌍 Public Subnets
+Used for:
 
-These subnets contain the application EC2 instances running Spring PetClinic.
+* ⚖️ Application Load Balancer
+* 🚪 NAT Gateway
 
-Private Backend Subnets
-Service	Subnet	CIDR
-MySQL	db-subnet	10.0.2.0/24
-RabbitMQ	mq-subnet	10.0.3.0/24
-Memcached	cache-subnet	10.0.4.0/24
+### 🖥️ Private Application Subnets
+These subnets contain the Spring PetClinic application servers.
 
-All backend services remain private and are not directly exposed to the internet.
+---
 
-🔐 Security Groups
-Senior-ALB-SG
+## 🔐 Security Groups
 
-Allows public HTTP/HTTPS traffic:
+### ⚖️ ALB Security Group
 
-HTTP   : 80   ← 0.0.0.0/0
-HTTPS  : 443  ← 0.0.0.0/0
+Allows:
 
-Senior-App-SG
+* HTTP `80` from the internet
+* HTTPS `443` from the internet
 
-Allows application traffic only from the ALB:
+### 🖥️ Application Security Group
 
-TCP : 8080 ← Senior-ALB-SG
+Allows:
 
+* TCP `8080` only from the ALB Security Group
+* SSH `22` only from the administrator's public IP
 
-SSH access is restricted to the administrator's public IP:
+### 🗄️ Backend Security Group
 
-TCP : 22 ← YOUR_PUBLIC_IP/32
+Allows application servers to access:
 
-Senior-Back-SG
+| Service   |    Port |
+| --------- | ------: |
+| MySQL     |  `3306` |
+| RabbitMQ  |  `5672` |
+| Memcached | `11211` |
 
-Backend services accept traffic from the application layer:
+---
 
-MySQL      : 3306 ← Senior-App-SG
-RabbitMQ   : 5672 ← Senior-App-SG
-Memcached  : 11211 ← Senior-App-SG
+## ⚖️ Application Load Balancer
 
+An **Internet-facing ALB** distributes traffic between the two application servers.
 
-Backend-to-backend communication is also allowed where required.
+### Target Group
 
-🌐 Routing Architecture
-Public Route Table
+* Name: `project-tg`
+* Protocol: HTTP
+* Port: `8080`
+* Health Check: `/`
 
-The public route table contains:
+### Targets
 
-Destination       Target
+* `app_vm_1`
+* `app_vm_2`
 
-0.0.0.0/0   →   Internet Gateway
+---
 
+## 🖥️ EC2 Instances
 
-It is associated with:
+| Instance   | Role             | Subnet       | Access  |
+| ---------- | ---------------- | ------------ | ------- |
+| `app_vm_1` | Spring PetClinic | app-subnet-1 | Private |
+| `app_vm_2` | Spring PetClinic | app-subnet-2 | Private |
+| `db_vm`    | MySQL            | db-subnet    | Private |
+| `mq_vm`    | RabbitMQ         | mq-subnet    | Private |
+| `cache_vm` | Memcached        | cache-subnet | Private |
 
-public-subnet-1
-public-subnet-2
+All instances run **Ubuntu** and do not have public IPv4 addresses.
 
-Private Route Table
+---
 
-The private route table contains:
+## 🔄 Traffic Flow
 
-Destination       Target
+**User → Internet → ALB → Application EC2 → Backend Services**
 
-0.0.0.0/0   →   NAT Gateway
+The application servers communicate with:
 
+* 🗄️ MySQL
+* 🐇 RabbitMQ
+* ⚡ Memcached
 
-It is associated with:
+---
 
-app-subnet-1
-app-subnet-2
-db-subnet
-mq-subnet
-cache-subnet
+## 🚪 NAT Gateway
 
+The NAT Gateway provides **outbound internet access** for private instances.
 
-This allows private EC2 instances to access the internet for outbound operations such as package installation and software updates without assigning public IP addresses.
+Private instances can download packages and updates without having public IP addresses.
 
-🚪 NAT Gateway
+**Flow:**
 
-The NAT Gateway is deployed inside:
+`Private EC2 → Private Route Table → NAT Gateway → Internet Gateway → Internet`
 
-public-subnet-1
+---
 
+## 🛠️ Application Stack
 
-with an Elastic IP.
+### ☕ Application
 
-Its purpose is to provide outbound internet connectivity to resources located in private subnets.
+* 🌱 Spring PetClinic
+* ☕ Java / JDK
+* 📦 Maven
+* 🐈 Apache Tomcat
 
-Private instances follow this path:
+### 🗄️ Database
 
-Private EC2
-     │
-     ▼
-Private Route Table
-     │
-     ▼
-NAT Gateway
-     │
-     ▼
-Internet Gateway
-     │
-     ▼
-Internet
+* 🐬 MySQL
 
+### 🐇 Message Broker
 
-The application and backend instances therefore remain private while still being able to download packages and communicate with external services when required.
+* 🐇 RabbitMQ
 
-⚖️ Application Load Balancer
+### ⚡ Cache
 
-An Internet-facing Application Load Balancer was created across both public subnets.
+* ⚡ Memcached
 
-Target Group
-Name: project-tg
-Protocol: HTTP
-Port: 8080
-Health Check: /
+---
 
+## 🧰 AWS Services & Tools
 
-Targets:
+* ☁️ Amazon VPC
+* 🖥️ Amazon EC2
+* ⚖️ Application Load Balancer
+* 🌐 Internet Gateway
+* 🚪 NAT Gateway
+* 📍 Elastic IP
+* 🛣️ Route Tables
+* 🔐 Security Groups
+* 🐧 Ubuntu Linux
+* ☕ Java
+* 📦 Maven
+* 🐈 Apache Tomcat
+* 🐬 MySQL
+* 🐇 RabbitMQ
+* ⚡ Memcached
+* 🔧 Git & GitHub
+* 🔑 SSH
 
-app_vm_1
-app_vm_2
+---
 
-
-Traffic flow:
-
-User
- │
- ▼
-Application Load Balancer
- │
- ├──► App EC2 #1 :8080
- │
- └──► App EC2 #2 :8080
-
-
-The ALB distributes incoming requests between the two application servers.
-
-🖥️ EC2 Instances
-
-The infrastructure contains five EC2 instances:
-
-Instance	Role	Subnet	Access
-app_vm_1	Spring PetClinic	app-subnet-1	Private
-app_vm_2	Spring PetClinic	app-subnet-2	Private
-db_vm	MySQL	db-subnet	Private
-mq_vm	RabbitMQ	mq-subnet	Private
-cache_vm	Memcached	cache-subnet	Private
-
-All instances use Ubuntu and do not receive public IPv4 addresses.
-
-🧩 Application Stack
-Application
-Spring PetClinic
-Java
-Maven
-Apache Tomcat
-Database
-MySQL
-Message Broker
-RabbitMQ
-Cache
-Memcached
-Cloud Infrastructure
-Amazon VPC
-Amazon EC2
-Internet Gateway
-NAT Gateway
-Elastic IP
-Application Load Balancer
-Route Tables
-Security Groups
-🛠️ Tools
-
-The project was built using:
-
-AWS Management Console
-Amazon EC2
-Amazon VPC
-Application Load Balancer
-Ubuntu Linux
-Java / JDK
-Maven
-Apache Tomcat
-MySQL
-RabbitMQ
-Memcached
-Git & GitHub
-SSH
-🔄 Application Request Flow
-
-        MySQL    RabbitMQ  Memcached
-
-🌍 Private Instance Internet Access
-
-Private instances do not have public IP addresses.
-
-When they need outbound internet connectivity:
-
-Private EC2
-     │
-     ▼
-Private Route Table
-     │
-     ▼
-NAT Gateway
-     │
-     ▼
-Public Route Table
-     │
-     ▼
-Internet Gateway
-     │
-     ▼
-Internet
-
-
-This architecture provides internet access without making the private instances directly reachable from the public internet.
-
-📊 Result
+## 📊 Project Result
 
 The final deployment provides:
 
-A custom AWS VPC
-Segmented public and private subnets
-Multi-AZ application deployment
-Internet-facing Application Load Balancer
-Two private application servers
-Private MySQL database server
-Private RabbitMQ server
-Private Memcached server
-NAT Gateway for outbound internet access
-Security Groups controlling service-to-service communication
-No public IP addresses on application/backend EC2 instances
+* ✅ Secure 3-Tier AWS Architecture
+* ✅ Multi-AZ Application Deployment
+* ✅ Internet-facing Application Load Balancer
+* ✅ Two Private Application Servers
+* ✅ Private MySQL Server
+* ✅ Private RabbitMQ Server
+* ✅ Private Memcached Server
+* ✅ NAT Gateway for Outbound Access
+* ✅ Security Groups for Network Control
+* ✅ No Public IPs on Application/Backend Servers
 
-The application can be accessed through the ALB DNS name:
+---
 
-http://<ALB-DNS-NAME>/
+## 👨‍💻 Author
 
-🔒 Security Considerations
+**Ahmed Anany**
 
-This project intentionally keeps application and backend servers private.
-
-Recommended production improvements include:
-
-Store credentials in AWS Secrets Manager or SSM Parameter Store
-Use HTTPS with an SSL/TLS certificate
-Use Amazon RDS instead of self-managed MySQL
-Use Amazon ElastiCache instead of self-managed Memcached
-Use Amazon MQ or another managed messaging solution where appropriate
-Deploy NAT Gateways in both Availability Zones for higher availability
-Use IAM roles instead of static credentials
-Use Systems Manager Session Manager instead of exposing SSH where possible
-Restrict security group rules to the minimum required ports
-Enable monitoring and logging with CloudWatch
-Use infrastructure-as-code such as Terraform or CloudFormation
-📁 Suggested Repository Structure
-petclinic-aws/
-│
-├── README.md
-│
-├── architecture/
-│   └── aws-architecture.png
-│
-├── docs/
-│   ├── infrastructure.md
-│   ├── security.md
-│   └── deployment.md
-│
-├── app/
-│   └── README.md
-│
-└── screenshots/
-    ├── vpc.png
-    ├── subnets.png
-    ├── route-tables.png
-    ├── security-groups.png
-    ├── ec2.png
-    ├── alb.png
-    └── petclinic.png
-
-
-Important: Never upload .pem files, passwords, private keys, database credentials, or other secrets to GitHub.
-
-👨‍💻 Author
-
-Your Name
-
-Cloud / DevOps Project
+☁️ Cloud / DevOps Project
 
 Built with AWS, Linux, Java, and modern cloud networking concepts.
